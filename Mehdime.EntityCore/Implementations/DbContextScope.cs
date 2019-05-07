@@ -14,6 +14,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Mehdime.EntityCore
 {
@@ -152,11 +153,10 @@ namespace Mehdime.EntityCore
 			// So we must cast the DbContext instances to IObjectContextAdapter in order to access their ObjectContext.
 			// This cast is completely safe.
 
-			foreach (IObjectContextAdapter contextInCurrentScope in _dbContexts.InitializedDbContexts.Values)
+			foreach (var contextInCurrentScope in _dbContexts.InitializedDbContexts.Values)
             {
                 var correspondingParentContext =
-                    _parentScope._dbContexts.InitializedDbContexts.Values.SingleOrDefault(parentContext => parentContext.GetType() == contextInCurrentScope.GetType())
-					as IObjectContextAdapter;
+                    _parentScope._dbContexts.InitializedDbContexts.Values.SingleOrDefault(parentContext => parentContext.GetType() == contextInCurrentScope.GetType());
 
                 if (correspondingParentContext == null)
                     continue; // No DbContext of this type has been created in the parent scope yet. So no need to refresh anything for this DbContext type.
@@ -169,21 +169,29 @@ namespace Mehdime.EntityCore
                     // First, we need to find what the EntityKey for this entity is. 
                     // We need this EntityKey in order to check if this entity has
                     // already been loaded in the parent DbContext's first-level cache (the ObjectStateManager).
-                    ObjectStateEntry stateInCurrentScope;
-                    if (contextInCurrentScope.ObjectContext.ObjectStateManager.TryGetObjectStateEntry(toRefresh, out stateInCurrentScope))
+
+                    var stateInCurrentScope = contextInCurrentScope.Entry(toRefresh);
+
+                    if (stateInCurrentScope.State != EntityState.Detached)
                     {
-                        var key = stateInCurrentScope.EntityKey;
+                        var entityType = stateInCurrentScope.Metadata.DefiningEntityType;
+                        var key = entityType.FindPrimaryKey();
 
                         // Now we can see if that entity exists in the parent DbContext instance and refresh it.
-                        ObjectStateEntry stateInParentScope;
-                        if (correspondingParentContext.ObjectContext.ObjectStateManager.TryGetObjectStateEntry(key, out stateInParentScope))
+                        var stateInParentScope = correspondingParentContext.ChangeTracker.Entries().SingleOrDefault(ee =>
+                            ee.Metadata.DefiningEntityType == entityType &&
+                            key.Properties.All(pk =>
+                                ee.Property(pk.Name).OriginalValue == stateInCurrentScope.Property(pk.Name).OriginalValue
+                            ));
+
+                        if (stateInParentScope != default(EntityEntry))
                         {
                             // Only refresh the entity in the parent DbContext from the database if that entity hasn't already been
                             // modified in the parent. Otherwise, let the whatever concurency rules the application uses
                             // apply.
                             if (stateInParentScope.State == EntityState.Unchanged)
                             {
-                                correspondingParentContext.ObjectContext.Refresh(RefreshMode.StoreWins, stateInParentScope.Entity);
+                                stateInParentScope.Reload();
                             }
                         }
                     }
@@ -204,28 +212,37 @@ namespace Mehdime.EntityCore
             if (_nested) 
                 return;
 
-			foreach (IObjectContextAdapter contextInCurrentScope in _dbContexts.InitializedDbContexts.Values)
+			foreach (var contextInCurrentScope in _dbContexts.InitializedDbContexts.Values)
             {
                 var correspondingParentContext =
-                    _parentScope._dbContexts.InitializedDbContexts.Values.SingleOrDefault(parentContext => parentContext.GetType() == contextInCurrentScope.GetType())
-					as IObjectContextAdapter;
+                    _parentScope._dbContexts.InitializedDbContexts.Values.SingleOrDefault(parentContext => parentContext.GetType() == contextInCurrentScope.GetType());
 
                 if (correspondingParentContext == null)
-                    continue; 
+                    continue;
+
+                var trackedInCurrentContext = contextInCurrentScope.ChangeTracker.Entries();
+                var trackedInParentContext = correspondingParentContext.ChangeTracker.Entries();
 
                 foreach (var toRefresh in entities)
                 {
-                    ObjectStateEntry stateInCurrentScope;
-                    if (contextInCurrentScope.ObjectContext.ObjectStateManager.TryGetObjectStateEntry(toRefresh, out stateInCurrentScope))
-                    {
-                        var key = stateInCurrentScope.EntityKey;
+                    var stateInCurrentScope = contextInCurrentScope.Entry(toRefresh);
 
-                        ObjectStateEntry stateInParentScope;
-                        if (correspondingParentContext.ObjectContext.ObjectStateManager.TryGetObjectStateEntry(key, out stateInParentScope))
+                    if (stateInCurrentScope.State != EntityState.Detached)
+                    {
+                        var entityType = stateInCurrentScope.Metadata.DefiningEntityType;
+                        var key = entityType.FindPrimaryKey();
+
+                        var stateInParentScope = correspondingParentContext.ChangeTracker.Entries().SingleOrDefault(ee =>
+                            ee.Metadata.DefiningEntityType == entityType &&
+                            key.Properties.All(pk =>
+                                ee.Property(pk.Name).OriginalValue == stateInCurrentScope.Property(pk.Name).OriginalValue
+                            ));
+
+                        if (stateInParentScope != default(EntityEntry))
                         {
                             if (stateInParentScope.State == EntityState.Unchanged)
                             {
-                                await correspondingParentContext.ObjectContext.RefreshAsync(RefreshMode.StoreWins, stateInParentScope.Entity).ConfigureAwait(false);
+                                await stateInParentScope.ReloadAsync().ConfigureAwait(false);
                             }
                         }
                     }
