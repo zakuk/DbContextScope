@@ -7,7 +7,7 @@
  */
 using System.Data;
 
-namespace Mehdime.Entity
+namespace Mehdime.EntityCore
 {
     public class DbContextReadOnlyScope : IDbContextReadOnlyScope
     {

@@ -6,9 +6,9 @@
  * of the MIT license.  See the LICENSE file for details.
  */
 using System;
-using System.Data.Entity;
+using Microsoft.EntityFrameworkCore;
 
-namespace Mehdime.Entity
+namespace Mehdime.EntityCore
 {
     /// <summary>
     /// Maintains a list of lazily-created DbContext instances.

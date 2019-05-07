@@ -8,16 +8,14 @@
 using System;
 using System.Collections;
 using System.Data;
-using System.Data.Entity;
-using System.Data.Entity.Core.Objects;
-using System.Data.Entity.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.Remoting.Messaging;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
-namespace Mehdime.Entity
+namespace Mehdime.EntityCore
 {
     public class DbContextScope : IDbContextScope
     {

@@ -5,9 +5,9 @@
  * This software may be modified and distributed under the terms
  * of the MIT license.  See the LICENSE file for details.
  */
-using System.Data.Entity;
+using Microsoft.EntityFrameworkCore;
 
-namespace Mehdime.Entity
+namespace Mehdime.EntityCore
 {
     /// <summary>
     /// Factory for DbContext-derived classes that don't expose 

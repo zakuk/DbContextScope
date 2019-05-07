@@ -7,7 +7,7 @@
  */
 using System;
 
-namespace Mehdime.Entity
+namespace Mehdime.EntityCore
 {
     public class AmbientContextSuppressor : IDisposable
     {

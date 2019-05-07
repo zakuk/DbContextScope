@@ -8,12 +8,13 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Entity;
+using Microsoft.EntityFrameworkCore;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Storage;
 
-namespace Mehdime.Entity
+namespace Mehdime.EntityCore
 {
     /// <summary>
     /// As its name suggests, DbContextCollection maintains a collection of DbContext instances.
@@ -30,7 +31,7 @@ namespace Mehdime.Entity
     public class DbContextCollection : IDbContextCollection
     {
         private Dictionary<Type, DbContext> _initializedDbContexts;
-        private Dictionary<DbContext, DbContextTransaction> _transactions; 
+        private Dictionary<DbContext, IDbContextTransaction> _transactions; 
         private IsolationLevel? _isolationLevel;
         private readonly IDbContextFactory _dbContextFactory;
         private bool _disposed;
@@ -45,7 +46,7 @@ namespace Mehdime.Entity
             _completed = false;
 
             _initializedDbContexts = new Dictionary<Type, DbContext>();
-            _transactions = new Dictionary<DbContext, DbContextTransaction>();
+            _transactions = new Dictionary<DbContext, IDbContextTransaction>();
 
             _readOnly = readOnly;
             _isolationLevel = isolationLevel;
@@ -71,7 +72,7 @@ namespace Mehdime.Entity
 
                 if (_readOnly)
                 {
-                    dbContext.Configuration.AutoDetectChangesEnabled = false;
+                    dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
                 }
 
                 if (_isolationLevel.HasValue)

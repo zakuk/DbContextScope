@@ -7,7 +7,7 @@
  */
 using System;
 
-namespace Mehdime.Entity
+namespace Mehdime.EntityCore
 {
     /// <summary>
     /// A read-only DbContextScope. Refer to the comments for IDbContextScope
