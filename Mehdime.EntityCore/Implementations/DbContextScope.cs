@@ -174,14 +174,14 @@ namespace Mehdime.EntityCore
 
                     if (stateInCurrentScope.State != EntityState.Detached)
                     {
-                        var entityType = stateInCurrentScope.Metadata.DefiningEntityType;
+                        var entityType = stateInCurrentScope.CurrentValues.EntityType;
                         var key = entityType.FindPrimaryKey();
 
                         // Now we can see if that entity exists in the parent DbContext instance and refresh it.
                         var stateInParentScope = correspondingParentContext.ChangeTracker.Entries().SingleOrDefault(ee =>
-                            ee.Metadata.DefiningEntityType == entityType &&
+                            ee.CurrentValues.EntityType == entityType &&
                             key.Properties.All(pk =>
-                                ee.Property(pk.Name).OriginalValue == stateInCurrentScope.Property(pk.Name).OriginalValue
+                                ee.Property(pk.Name).OriginalValue.Equals(stateInCurrentScope.Property(pk.Name).OriginalValue)
                             ));
 
                         if (stateInParentScope != default(EntityEntry))
@@ -229,11 +229,11 @@ namespace Mehdime.EntityCore
 
                     if (stateInCurrentScope.State != EntityState.Detached)
                     {
-                        var entityType = stateInCurrentScope.Metadata.DefiningEntityType;
+                        var entityType = stateInCurrentScope.CurrentValues.EntityType;
                         var key = entityType.FindPrimaryKey();
 
                         var stateInParentScope = correspondingParentContext.ChangeTracker.Entries().SingleOrDefault(ee =>
-                            ee.Metadata.DefiningEntityType == entityType &&
+                            ee.CurrentValues.EntityType == entityType &&
                             key.Properties.All(pk =>
                                 ee.Property(pk.Name).OriginalValue == stateInCurrentScope.Property(pk.Name).OriginalValue
                             ));
@@ -452,6 +452,8 @@ Stack Trace:
 
             if (_asyncLocalDbContext.Value == newAmbientScope._instanceIdentifier)
                 return;
+
+            _asyncLocalDbContext.Value = newAmbientScope._instanceIdentifier;
 
             // Keep track of this instance (or do nothing if we're already tracking it)
             DbContextScopeInstances.GetValue(newAmbientScope._instanceIdentifier, key => newAmbientScope);
